@@ -1,0 +1,269 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "MS4 · Estoque/Grade",
+    "description": "Responsabilidade: saldo por grade e histórico de movimentos. Produto e Roupa pertencem ao MS1 — este serviço recebe `roupaId` e `produtoId` como referências externas.",
+    "version": "1.0.0"
+  },
+  "tags": [
+    { "name": "health" },
+    { "name": "estoque", "description": "Registro de roupas no estoque e consulta de saldo" },
+    { "name": "movimentos", "description": "Entradas, saídas, ajustes e histórico" }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "tags": ["health"],
+        "summary": "Health check",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/HealthResponse" } } }
+          }
+        }
+      }
+    },
+    "/estoque": {
+      "post": {
+        "tags": ["estoque"],
+        "summary": "Registra roupa no estoque",
+        "description": "Chamado pelo MS1 quando uma nova roupa (grade) é criada. Inicializa o saldo em 0.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/RegistrarEstoquePayload" } } }
+        },
+        "responses": {
+          "201": { "description": "Entrada de estoque criada", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Estoque" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "409": { "$ref": "#/components/responses/Conflict" }
+        }
+      },
+      "get": {
+        "tags": ["estoque"],
+        "summary": "Lista saldos",
+        "parameters": [
+          {
+            "name": "produtoId",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "description": "Filtra por produto (ID externo do MS1)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de saldos",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Estoque" } } } }
+          }
+        }
+      }
+    },
+    "/estoque/{roupaId}": {
+      "get": {
+        "tags": ["estoque"],
+        "summary": "Saldo de uma roupa",
+        "parameters": [{ "$ref": "#/components/parameters/roupaId" }],
+        "responses": {
+          "200": { "description": "Saldo atual", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Estoque" } } } },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/estoque/produto/{produtoId}": {
+      "get": {
+        "tags": ["estoque"],
+        "summary": "Saldos de um produto filtrados por característica",
+        "description": "Retorna todas as roupas (grades) de um produto com seus saldos. Filtrável por `tamanho` e/ou `cor`.",
+        "parameters": [
+          {
+            "name": "produtoId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "ID do produto (externo, MS1)"
+          },
+          {
+            "name": "tamanho",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "example": "M"
+          },
+          {
+            "name": "cor",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string" },
+            "example": "Azul"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Lista de saldos filtrada",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Estoque" } } } }
+          }
+        }
+      }
+    },
+    "/estoque/entrada": {
+      "post": {
+        "tags": ["movimentos"],
+        "summary": "Entrada de mercadoria",
+        "description": "Incrementa saldo. Cria movimento tipo 'entrada'.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EntradaPayload" } } }
+        },
+        "responses": {
+          "201": { "description": "Movimento criado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Movimento" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/estoque/saida": {
+      "post": {
+        "tags": ["movimentos"],
+        "summary": "Saída de mercadoria",
+        "description": "Decrementa saldo. Retorna 422 se saldo insuficiente. Cria movimento tipo 'saida'.",
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SaidaPayload" } } }
+        },
+        "responses": {
+          "201": { "description": "Movimento criado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Movimento" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "422": { "description": "Saldo insuficiente", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } } }
+        }
+      }
+    },
+    "/estoque/{roupaId}/ajuste": {
+      "patch": {
+        "tags": ["movimentos"],
+        "summary": "Ajuste manual de saldo",
+        "description": "Define saldo absoluto (inventário físico). Cria movimento tipo 'ajuste' com delta calculado automaticamente.",
+        "parameters": [{ "$ref": "#/components/parameters/roupaId" }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AjustePayload" } } }
+        },
+        "responses": {
+          "200": { "description": "Ajuste aplicado", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Movimento" } } } },
+          "400": { "$ref": "#/components/responses/BadRequest" },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    },
+    "/estoque/{roupaId}/movimentos": {
+      "get": {
+        "tags": ["movimentos"],
+        "summary": "Histórico de movimentos de uma roupa",
+        "parameters": [{ "$ref": "#/components/parameters/roupaId" }],
+        "responses": {
+          "200": {
+            "description": "Histórico ordenado por data decrescente",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Movimento" } } } }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "roupaId": {
+        "name": "roupaId",
+        "in": "path",
+        "required": true,
+        "schema": { "type": "string" },
+        "description": "ID externo da roupa (vem do MS1)"
+      }
+    },
+    "schemas": {
+      "HealthResponse": {
+        "type": "object",
+        "properties": { "status": { "type": "string", "example": "ok" } }
+      },
+      "Estoque": {
+        "type": "object",
+        "properties": {
+          "roupaId": { "type": "string", "example": "uuid-da-roupa-ms1" },
+          "produtoId": { "type": "string", "example": "uuid-do-produto-ms1" },
+          "tamanho": { "type": "string", "example": "M" },
+          "cor": { "type": "string", "example": "Azul" },
+          "saldo": { "type": "integer", "example": 42 },
+          "atualizadoEm": { "type": "string", "format": "date-time" }
+        }
+      },
+      "Movimento": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string", "format": "uuid" },
+          "roupaId": { "type": "string" },
+          "produtoId": { "type": "string" },
+          "tipo": { "type": "string", "enum": ["entrada", "saida", "ajuste"] },
+          "quantidade": { "type": "integer", "description": "Delta. Negativo em saída e ajuste de redução." },
+          "saldoAnterior": { "type": "integer" },
+          "saldoPosterior": { "type": "integer" },
+          "observacao": { "type": "string" },
+          "criadoEm": { "type": "string", "format": "date-time" }
+        }
+      },
+      "RegistrarEstoquePayload": {
+        "type": "object",
+        "required": ["roupaId", "produtoId"],
+        "properties": {
+          "roupaId": { "type": "string", "description": "ID da roupa no MS1" },
+          "produtoId": { "type": "string", "description": "ID do produto no MS1" },
+          "tamanho": { "type": "string", "example": "M", "description": "Desnormalizado do MS1 para permitir filtros" },
+          "cor": { "type": "string", "example": "Azul", "description": "Desnormalizado do MS1 para permitir filtros" }
+        }
+      },
+      "EntradaPayload": {
+        "type": "object",
+        "required": ["roupaId", "quantidade"],
+        "properties": {
+          "roupaId": { "type": "string" },
+          "quantidade": { "type": "integer", "minimum": 1 },
+          "observacao": { "type": "string", "example": "Recebimento NF 1234" }
+        }
+      },
+      "SaidaPayload": {
+        "type": "object",
+        "required": ["roupaId", "quantidade"],
+        "properties": {
+          "roupaId": { "type": "string" },
+          "quantidade": { "type": "integer", "minimum": 1 },
+          "observacao": { "type": "string", "example": "Pedido #9871" }
+        }
+      },
+      "AjustePayload": {
+        "type": "object",
+        "required": ["quantidade"],
+        "properties": {
+          "quantidade": { "type": "integer", "minimum": 0, "description": "Saldo absoluto desejado" },
+          "observacao": { "type": "string", "example": "Inventário físico 17/06/2026" }
+        }
+      },
+      "Error": {
+        "type": "object",
+        "properties": { "error": { "type": "string" } }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "Dados inválidos",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "NotFound": {
+        "description": "Não encontrado",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      },
+      "Conflict": {
+        "description": "Conflito (duplicata)",
+        "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Error" } } }
+      }
+    }
+  }
+}
