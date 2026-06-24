@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - run: npm run test:functional
+
+  container-health:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t plus-ms-estoque .
+      - run: docker run -d --name ms-estoque -p 3000:3000 plus-ms-estoque
+      - name: Aguarda /health responder
+        run: |
+          for i in $(seq 1 30); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/health || true)
+            if [ "$STATUS" = "200" ]; then
+              echo "Container pronto (tentativa $i)"
+              exit 0
+            fi
+            echo "Tentativa $i: status=$STATUS"
+            sleep 2
+          done
+          echo "Container nao ficou pronto a tempo"
+          docker logs ms-estoque
+          exit 1
+      - name: Verifica resposta de /health
+        run: |
+          RESPONSE=$(curl -s http://localhost:3000/health)
+          echo "Resposta: $RESPONSE"
+          echo "$RESPONSE" | grep -q '"status":"ok"'
+      - name: Verifica Swagger UI
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/docs/)
+          echo "Status Swagger UI: $STATUS"
+          [ "$STATUS" = "200" ]
+      - name: Logs do container em caso de falha
+        if: failure()
+        run: docker logs ms-estoque
+      - name: Para o container
+        if: always()
+        run: docker rm -f ms-estoque
+
+  publish:
+    needs: container-health
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build e publica a imagem no GHCR
+        run: |
+          IMAGE=ghcr.io/${{ github.repository_owner }}/plus-ms-estoque
+          docker build -t "$IMAGE:latest" -t "$IMAGE:${{ github.run_number }}" .
+          docker push "$IMAGE:latest"
+          docker push "$IMAGE:${{ github.run_number }}"
