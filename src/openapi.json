@@ -155,6 +155,38 @@
         }
       }
     },
+    "/estoque/movimentos": {
+      "get": {
+        "tags": ["movimentos"],
+        "summary": "Histórico de movimentos de todas as roupas",
+        "description": "Retorna o histórico de entradas, saídas e ajustes de todo o estoque (todos os produtos/roupas), ordenado por data decrescente. Filtrável por intervalo de data via `desde`/`ate`.",
+        "parameters": [
+          {
+            "name": "desde",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date-time" },
+            "description": "Data/hora inicial (inclusive, ISO 8601)",
+            "example": "2026-06-01"
+          },
+          {
+            "name": "ate",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "string", "format": "date-time" },
+            "description": "Data/hora final (inclusive, ISO 8601)",
+            "example": "2026-06-30"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Histórico ordenado por data decrescente",
+            "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/Movimento" } } } }
+          },
+          "400": { "$ref": "#/components/responses/BadRequest" }
+        }
+      }
+    },
     "/estoque/{roupaId}/movimentos": {
       "get": {
         "tags": ["movimentos"],

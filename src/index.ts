@@ -3,8 +3,7 @@ import { Request, Response } from 'express';
 import swaggerUi from 'swagger-ui-express';
 import estoqueRouter from './routes/estoque';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const openApiSpec = require('./openapi.json');
+import openApiSpec from './openapi.json';
 
 const app = express();
 const port = 3000;
