@@ -74,7 +74,8 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build e publica a imagem no GHCR
         run: |
-          IMAGE=ghcr.io/${{ github.repository_owner }}/plus-ms-estoque
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          IMAGE=ghcr.io/$OWNER/plus-ms-estoque
           docker build -t "$IMAGE:latest" -t "$IMAGE:${{ github.run_number }}" .
           docker push "$IMAGE:latest"
           docker push "$IMAGE:${{ github.run_number }}"
