@@ -6,6 +6,8 @@ const router = Router();
 router.post('/', ctrl.registrar);
 router.get('/', ctrl.listar);
 router.get('/produto/:produtoId', ctrl.listarPorProduto);
+// Precisa vir antes de '/:roupaId' (senao "movimentos" seria capturado como roupaId)
+router.get('/movimentos', ctrl.listarTodosMovimentos);
 router.get('/:roupaId', ctrl.buscar);
 router.post('/entrada', ctrl.registrarEntrada);
 router.post('/saida', ctrl.registrarSaida);

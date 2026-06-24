@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import Database from 'better-sqlite3';
 import { getDb } from '../db/database';
-import type { Estoque, Movimento, RegistrarEstoquePayload, FiltroEstoquePayload, EntradaPayload, SaidaPayload, AjustePayload } from '../types/estoque';
+import type { Estoque, Movimento, RegistrarEstoquePayload, FiltroEstoquePayload, EntradaPayload, SaidaPayload, AjustePayload, FiltroMovimentosPayload } from '../types/estoque';
 
 interface EstoqueRow {
   roupa_id: string;
@@ -142,6 +142,19 @@ export function listarMovimentos(roupaId: string): Movimento[] | null {
   const db = getDb();
   if (!db.prepare('SELECT roupa_id FROM estoque WHERE roupa_id = ?').get(roupaId)) return null;
   const rows = db.prepare('SELECT * FROM movimento WHERE roupa_id = ? ORDER BY criado_em DESC').all(roupaId) as MovimentoRow[];
+  return rows.map(toMovimento);
+}
+
+export function listarTodosMovimentos(filtro: FiltroMovimentosPayload): Movimento[] {
+  const db = getDb();
+  const conditions: string[] = [];
+  const params: string[] = [];
+
+  if (filtro.desde) { conditions.push('criado_em >= ?'); params.push(filtro.desde); }
+  if (filtro.ate) { conditions.push('criado_em <= ?'); params.push(filtro.ate); }
+
+  const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
+  const rows = db.prepare(`SELECT * FROM movimento ${where} ORDER BY criado_em DESC`).all(...params) as MovimentoRow[];
   return rows.map(toMovimento);
 }
 

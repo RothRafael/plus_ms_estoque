@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import * as svc from '../services/estoqueService';
-import type { RegistrarEstoquePayload, FiltroEstoquePayload, EntradaPayload, SaidaPayload, AjustePayload } from '../types/estoque';
+import type { RegistrarEstoquePayload, FiltroEstoquePayload, EntradaPayload, SaidaPayload, AjustePayload, FiltroMovimentosPayload } from '../types/estoque';
 
 export function registrar(req: Request, res: Response): void {
   const payload = req.body as RegistrarEstoquePayload;
@@ -81,4 +81,15 @@ export function listarMovimentos(req: Request<{ roupaId: string }>, res: Respons
   const movimentos = svc.listarMovimentos(req.params.roupaId);
   if (movimentos === null) { res.status(404).json({ error: 'Roupa não encontrada no estoque' }); return; }
   res.status(200).json(movimentos);
+}
+
+export function listarTodosMovimentos(req: Request, res: Response): void {
+  const desde = req.query['desde'] as string | undefined;
+  const ate = req.query['ate'] as string | undefined;
+  if ((desde && isNaN(Date.parse(desde))) || (ate && isNaN(Date.parse(ate)))) {
+    res.status(400).json({ error: 'desde/ate devem ser datas válidas (ISO 8601)' });
+    return;
+  }
+  const filtro: FiltroMovimentosPayload = { desde, ate };
+  res.status(200).json(svc.listarTodosMovimentos(filtro));
 }

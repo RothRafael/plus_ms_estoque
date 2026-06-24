@@ -158,3 +158,28 @@ Cada movimento armazena `saldo_anterior` e `saldo_posterior` explicitamente.
 **Consequências:**
 
 - Redundância intencional — aceita como tradeoff de auditabilidade
+
+---
+
+## ADR-007 · Endpoint global de movimentos com filtro de data, em vez de agregação no cliente
+
+**Status:** Aceito
+
+**Contexto:**
+
+O MFE de estoque precisava de uma tela de histórico mostrando as movimentações de **todos** os produtos num intervalo de dias, ordenadas por horário — não só de uma roupa específica (já coberto por `GET /estoque/:roupaId/movimentos`). A alternativa seria o MFE buscar todas as roupas (`GET /estoque`) e, para cada uma, buscar seus movimentos (`GET /:roupaId/movimentos`), juntando e filtrando no cliente.
+
+**Decisão:**
+
+Adicionar `GET /estoque/movimentos?desde=&ate=`, que consulta a tabela `movimento` diretamente (sem filtrar por `roupa_id`), com filtro opcional de intervalo de data e ordenação por `criado_em` decrescente — mesma convenção do endpoint por roupa.
+
+**Justificativa:**
+
+- Agregação no cliente seria N+1 requisições (uma por roupa cadastrada), degradando com o crescimento do catálogo
+- A tabela `movimento` já tem todos os dados necessários numa única query; o filtro de data é uma cláusula `WHERE` simples sobre `criado_em` (string ISO 8601, comparável lexicograficamente)
+- Mantém a mesma responsabilidade do MS4 (dono dos dados de movimento) em vez de mover lógica de agregação para o frontend
+
+**Consequências:**
+
+- Novo endpoint precisou ser registrado **antes** de `GET /estoque/:roupaId` no Express Router — caso contrário, `/movimentos` seria capturado pelo parâmetro `:roupaId`
+- Sem paginação por ora — aceitável no volume atual do projeto; se o histórico crescer muito, paginação ou limite de página seria a evolução natural
