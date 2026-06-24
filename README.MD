@@ -87,6 +87,7 @@ Documentação interativa disponível em **`GET /docs`** (Swagger UI).
 | `POST` | `/estoque/saida` | Registra saída de mercadoria (-saldo). Retorna `422` se saldo insuficiente |
 | `PATCH` | `/estoque/:roupaId/ajuste` | Ajuste manual: define saldo absoluto (inventário físico) |
 | `GET` | `/estoque/:roupaId/movimentos` | Histórico de movimentos de uma roupa, ordenado por data decrescente |
+| `GET` | `/estoque/movimentos` | Histórico de movimentos de **todas** as roupas, ordenado por data decrescente. Filtrável por `?desde=` e/ou `?ate=` (ISO 8601) |
 
 ---
 
@@ -144,6 +145,12 @@ curl -X PATCH http://localhost:3000/estoque/uuid-da-roupa/ajuste \
 
 ```bash
 curl "http://localhost:3000/estoque/produto/uuid-do-produto?tamanho=M"
+```
+
+### Histórico de movimentos de todas as roupas, filtrado por período
+
+```bash
+curl "http://localhost:3000/estoque/movimentos?desde=2026-06-01&ate=2026-06-30"
 ```
 
 ---

@@ -49,3 +49,8 @@ export interface AjustePayload {
   quantidade: number;
   observacao?: string | undefined;
 }
+
+export interface FiltroMovimentosPayload {
+  desde?: string | undefined;
+  ate?: string | undefined;
+}
